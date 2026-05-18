@@ -73,6 +73,22 @@ Headless
 firefox-bin -headless -P default-nightly index.html | grep console.log
 ```
 
+#### Deno
+
+```javascript
+deno -A host-browser.js
+```
+
+#### Bun
+
+```javascript
+bun host-browser.js
+```
+
+#### Node.js
+```javascript
+node --no-warnings host-browser.js
+```
 `embedded.js`
 
 ```javascript
