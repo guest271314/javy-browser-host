@@ -9,8 +9,8 @@ async function runWasm(e) {
 
   try {
     const [embeddedModule, pluginModule] = await Promise.all([
-      compileModule("embedded.wasm"),
-      compileModule("plugin.wasm"),
+      compileModule("./embedded.wasm"),
+      compileModule("./plugin.wasm"),
     ]);
 
     const result = JSON.stringify(
@@ -19,14 +19,36 @@ async function runWasm(e) {
       2,
     );
     console.log(result);
-    document.querySelector("output")
-      .textContent = result;
+    if (globalThis?.document) {
+      globalThis.document.querySelector("output")
+        .textContent = result;
+    }
   } catch (e) {
     console.log(e);
   }
 
   async function readFile(fileName) {
-    return await (await fetch(fileName)).bytes();
+    let response = void 0;
+    try {
+      response = await (await fetch(new URL(fileName, import.meta.url)))
+        .bytes();
+    } catch (e) {
+      // Handle Node.js/Undici WHATWG Fetch implementation not supporting file: protocol
+      // [TypeError: fetch failed] {[cause]: Error: not implemented... yet...
+      // ... at fetch (node:internal/bootstrap/web/exposed-window-or-worker:83:12)
+    } finally {
+      if (
+        !(response instanceof Uint8Array) && response === void 0 &&
+        navigator.userAgent.startsWith("Node.js")
+      ) {
+        const { readFile } = await import("node:fs/promises");
+        const file = await readFile(fileName);
+        response = await new Response(file, {
+          headers: { "content-type": "application/wasm" },
+        }).bytes();
+      }
+      return response;
+    }
   }
 
   async function compileModule(wasmPath) {
@@ -110,7 +132,12 @@ async function runWasm(e) {
   }
 }
 
-document.querySelector("button").addEventListener("click", runWasm);
+if (globalThis?.document) {
+  globalThis.document.querySelector("button").addEventListener(
+    "click",
+    runWasm,
+  );
+}
 // Run on document load
 runWasm().catch(console.log);
 export {};
